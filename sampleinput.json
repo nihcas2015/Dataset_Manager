@@ -1,0 +1,4 @@
+{
+    "path":"E:/GothamDataset2025/iotsim-air-quality-1.csv",
+    "target":"label",
+    "prompt_1":"label all columns"}

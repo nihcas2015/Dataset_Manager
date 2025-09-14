@@ -1,4 +1,6 @@
 {
     "path":"E:/GothamDataset2025/iotsim-air-quality-1.csv",
     "target":"label",
-    "prompt_1":"label all columns"}
+    "prompt_1":"Encode all categorical features ",
+    "prompt_2":"Handling missing values using mean imputation technique"
+}

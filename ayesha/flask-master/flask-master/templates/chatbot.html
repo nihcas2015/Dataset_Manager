@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot - {{ process_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body class="chat-background">
+<div class="chat-container">
+    <div class="chat-header">
+        <h3>{{ process_name.replace('_', ' ').title() }}</h3>
+        <a href="/" class="back-button">← Back to Home</a>
+    </div>
+    
+    <div class="messages" id="messages">
+        <!-- Display conversation history -->
+        {% for msg in conversation %}
+            <div class="{{ msg.type }}">
+                {% if msg.type == 'bot' %}
+                    <strong>🤖 Assistant:</strong> {{ msg.message }}
+                {% else %}
+                    {{ msg.message }}
+                {% endif %}
+            </div>
+        {% endfor %}
+        
+        <!-- Display current stage message if no conversation history -->
+        {% if not conversation %}
+            {% if stage == "start" %}
+                {% if process_name == "data_preprocessing" %}
+                    <div class="bot">
+                        <strong>🤖 Assistant:</strong> Hello! I'll help you preprocess your dataset.<br>
+                        Please enter the full path of the CSV file you want to preprocess.
+                        <div class="hint">Example: C:\data\my_dataset.csv</div>
+                    </div>
+                {% else %}
+                    <div class="bot">
+                        <strong>🤖 Assistant:</strong> Hello! I'll help you acquire a dataset.<br>
+                        Please describe the type of dataset you need.
+                        <div class="hint">Example: "Customer data with age, gender, and purchase history"</div>
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+        
+        <!-- Show completion message for finished stage -->
+        {% if stage == "finished" %}
+            <div class="bot">
+                <strong>🤖 Assistant:</strong> Processing completed! Here are the results:
+                <div class="result-container">
+                    {% if backend_output.status == "success" %}
+                        <div class="success-message">
+                            <h3>{{ backend_output.message }}</h3>
+                            <p><strong>📁 Processed Dataset Path:</strong> <code>{{ backend_output.dataset_path }}</code></p>
+                        </div>
+                    {% elif backend_output.status == "warning" %}
+                        <div class="warning-message">
+                            <h3>{{ backend_output.message }}</h3>
+                            {% if backend_output.dataset_path %}
+                                <p><strong>📁 Processed Dataset Path:</strong> <code>{{ backend_output.dataset_path }}</code></p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="error-message">
+                            <h3>{{ backend_output.message }}</h3>
+                        </div>
+                    {% endif %}
+                </div>
+                {% if sample_data %}
+                    <div class="sample-data">
+                        <strong>📊 Sample Data Preview:</strong>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        {% for col in sample_data[0].keys() %}
+                                            <th>{{ col }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in sample_data %}
+                                        <tr>
+                                            {% for val in row.values() %}
+                                                <td>{{ val }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+                <div class="action-buttons">
+                    <a href="/chat/{{ process_name }}" class="btn btn-primary">🔄 Start New Process</a>
+                    <a href="/" class="btn btn-secondary">🏠 Back to Home</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if stage != "finished" %}
+        <div class="input-container">
+            <form class="input-box" id="chat-form" action="/submit/{{ process_name }}" method="post">
+                {% if stage == "start" %}
+                    {% if process_name == "data_preprocessing" %}
+                        <div class="input-group">
+                            <input type="text" name="csv_path" placeholder="Enter full CSV file path (e.g., C:\data\dataset.csv)" required>
+                            <input type="hidden" name="stage" value="start">
+                            <button type="submit" class="submit-btn">📁 Submit Path</button>
+                        </div>
+                    {% else %}
+                        <div class="input-group">
+                            <input type="text" name="user_input" placeholder="Describe your dataset requirements..." required>
+                            <input type="hidden" name="stage" value="start">
+                            <button type="submit" class="submit-btn">📤 Send Request</button>
+                        </div>
+                    {% endif %}
+                {% elif stage == "target_column" %}
+                    <div class="input-group">
+                        <input type="text" name="target_column" placeholder="Enter target column name" required>
+                        <input type="hidden" name="stage" value="target_column">
+                        <button type="submit" class="submit-btn">🎯 Set Target</button>
+                    </div>
+                {% elif stage == "preprocessing_steps" %}
+                    <div class="input-group">
+                        <input type="text" name="preprocess_step" placeholder="Enter preprocessing step or 'END' to finish" required>
+                        <input type="hidden" name="stage" value="preprocessing_steps">
+                        <button type="submit" class="submit-btn">➕ Add Step</button>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+    {% endif %}
+
+    <div id="spinner" class="loading-spinner" style="display:none;">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing your request...</div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initializeChatForm();
+});
+
+function initializeChatForm() {
+    const form = document.getElementById('chat-form');
+    const messagesDiv = document.getElementById('messages');
+    const spinner = document.getElementById('spinner');
+
+    // Auto-scroll to bottom on page load
+    if (messagesDiv) {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    if (form) {
+        // Remove any existing event listeners to prevent duplicates
+        form.removeEventListener('submit', handleFormSubmit);
+        form.addEventListener('submit', handleFormSubmit);
+    }
+
+    function handleFormSubmit(e) {
+        e.preventDefault();
+
+        const stageInput = form.querySelector('input[name="stage"]');
+        const stage = stageInput ? stageInput.value : '';
+        const process = "{{ process_name }}";
+
+        // Get user input
+        const userInput = form.querySelector('input[type="text"]');
+        const userMessage = userInput ? userInput.value.trim() : '';
+
+        // Don't proceed if no message
+        if (!userMessage) {
+            return;
+        }
+
+        // Show spinner for processing steps that call backend
+        let showSpinner = false;
+        if (process === 'data_preprocessing' && stage === 'preprocessing_steps') {
+            const step = userMessage.toLowerCase();
+            if (step === 'no' || step === 'end' || step === 'done') {
+                showSpinner = true;
+            }
+        } else if (process === 'data_acquisition' && stage === 'start') {
+            showSpinner = true;
+        }
+
+        if (showSpinner) {
+            spinner.style.display = 'flex';
+        }
+
+        // Submit the form normally (server handles conversation history)
+        form.submit();
+    }
+}
+</script>
+</body>
+</html>

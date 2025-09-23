@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Result</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="result-container">
+    <h2>Process Completed ✅</h2>
+    <pre>{{ data | tojson(indent=4) }}</pre>
+  </div>
+</body>
+</html>

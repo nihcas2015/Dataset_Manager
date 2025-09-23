@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Data Conqueror</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="overlay">
+        <div class="main-content">
+            <h1 class="title-center">Data Conqueror</h1>
+            <p class="abstract">
+                Data Conqueror is an AI-driven tool designed to automate dataset retrieval and preparation. 
+                With an intuitive conversational UI, a powerful orchestrator agent, and smart acquisition 
+                capabilities, it helps researchers and engineers acquire and preprocess data with ease.
+            </p>
+
+            <ul class="features">
+                <li><b>Data Acquisition:</b> Automates dataset discovery, retrieval, and compliance-based collection.</li>
+                <li><b>Data Preprocessing:</b> Cleans, transforms, and prepares raw data for downstream AI/ML tasks.</li>
+            </ul>
+
+            <div class="buttons">
+                <a href="/chat/data_acquisition" class="process-btn">
+                    <img src="{{ url_for('static', filename='data_icon.jpg') }}" alt="Data Acquisition Icon">
+                    <span>Data Acquisition</span>
+                </a>
+
+                <a href="/chat/data_preprocessing" class="process-btn">
+                    <img src="{{ url_for('static', filename='preprocessing_icon.jpg') }}" alt="Data Preprocessing Icon">
+                    <span>Data Preprocessing</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer-dark">
+            <div class="member">
+                <img src="/static/ayesha.jpg" alt="Ayesha Muskan">
+                <p><b>Ayesha Muskan M</b><br>Reg No: 23MIA1131<br>Mail: ayeshamuskan.m2023@vitstudent.ac.in</p>
+            </div>
+            <div class="member">
+                <img src="/static/sachin.jpg" alt="Sachin S">
+                <p><b>Sachin S</b><br>Reg No: 23MIA1114<br>Mail: sachin.s2023@vitstudent.ac.in</p>
+            </div>
+            <div class="member">
+                <img src="/static/eric.jpg" alt="Eric Jonathan J">
+                <p><b>Eric Jonathan J</b><br>Reg No: 23MIA1068<br>Mail: ericjonathan.j2023@vitstudent.ac.in</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

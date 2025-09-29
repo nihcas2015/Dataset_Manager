@@ -18,11 +18,20 @@ def chat(process_name):
         session_data.clear()
         session_data["steps"] = []
         session_data["conversation"] = []  # Track conversation history
+    elif process_name == "data_acquisition":
+        session_data.clear()
+        session_data["conversation"] = []  # Add conversation for data_acquisition too
+    
     return render_template("chatbot.html", process_name=process_name, stage="start", conversation=session_data.get("conversation", []))
 
 @app.route("/submit/<process_name>", methods=["POST"])
 def submit(process_name):
     global session_data
+    
+    # Initialize conversation if it doesn't exist
+    if "conversation" not in session_data:
+        session_data["conversation"] = []
+    
     if process_name == "data_preprocessing":
         stage = request.form.get("stage")
 
@@ -86,7 +95,6 @@ def submit(process_name):
                 
                 # Save JSON file in the main project directory (same level as preprocessor.py)
                 json_filename = "sampleinput.json"
-                json_filepath = os.path.join("..", "..", "..", json_filename)  # Go back to main project directory
                 main_project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
                 json_full_path = os.path.join(main_project_dir, json_filename)
                 
@@ -118,70 +126,58 @@ def submit(process_name):
                         with open(output_json_path, 'r') as f:
                             output_data = json.load(f)
                         
-                        # Check if there's a processed dataset path
+                        # Create simplified backend output based on status
+                        status = output_data.get("status", "unknown")
                         processed_dataset_path = output_data.get("Processed_dataset_path", "")
                         
-                        if processed_dataset_path and os.path.exists(os.path.join(main_project_dir, processed_dataset_path)):
+                        if status == "success":
                             backend_output = {
                                 "status": "success",
                                 "message": "Dataset preprocessing completed successfully!",
-                                "input_json_file": json_filename,
-                                "output_json_file": "Output.json",
-                                "processed_dataset_path": processed_dataset_path,
-                                "input_data": preprocessing_data,
-                                "output_data": output_data,
-                                "steps_processed": len(session_data.get("steps", [])),
-                                "preprocessor_stdout": result.stdout if result.stdout else "No output",
-                                "preprocessor_stderr": result.stderr if result.stderr else "No errors"
+                                "processed_dataset_path": processed_dataset_path
+                            }
+                        elif status == "completed_with_errors":
+                            backend_output = {
+                                "status": "warning",
+                                "message": f"Completed with errors: {', '.join(output_data.get('errors', []))}"[:200],
+                                "processed_dataset_path": processed_dataset_path
                             }
                         else:
                             backend_output = {
-                                "status": "warning",
-                                "message": "Preprocessing completed but no processed dataset found",
-                                "input_json_file": json_filename,
-                                "output_json_file": "Output.json",
-                                "input_data": preprocessing_data,
-                                "output_data": output_data,
-                                "preprocessor_stdout": result.stdout if result.stdout else "No output",
-                                "preprocessor_stderr": result.stderr if result.stderr else "No errors"
+                                "status": "error",
+                                "message": output_data.get("message", "Unknown error occurred")
                             }
                     else:
-                        # No Output.json found, check for errors
+                        # No Output.json found
                         backend_output = {
                             "status": "error",
-                            "message": "Preprocessing failed - No Output.json file created",
-                            "input_json_file": json_filename,
-                            "input_data": preprocessing_data,
-                            "preprocessor_stdout": result.stdout if result.stdout else "No output",
-                            "preprocessor_stderr": result.stderr if result.stderr else "No errors",
-                            "return_code": result.returncode
+                            "message": f"Preprocessing failed - No Output.json file created. Error: {result.stderr[:200] if result.stderr else 'Unknown error'}"
                         }
                         
                 except subprocess.TimeoutExpired:
                     backend_output = {
                         "status": "error",
-                        "message": "Preprocessing timed out (exceeded 5 minutes)",
-                        "input_json_file": json_filename,
-                        "input_data": preprocessing_data
+                        "message": "Preprocessing timed out (exceeded 5 minutes)"
                     }
                 except Exception as e:
                     backend_output = {
                         "status": "error", 
-                        "message": f"Error running preprocessor: {str(e)}",
-                        "input_json_file": json_filename,
-                        "input_data": preprocessing_data
+                        "message": f"Error running preprocessor: {str(e)}"
                     }
 
-                session_data["conversation"].append({"type": "bot", "message": "Processing completed! JSON file created and dataset processed."})
+                session_data["conversation"].append({"type": "bot", "message": "Processing completed! Check results below."})
                 
                 return render_template("chatbot.html",
                                        process_name=process_name,
                                        stage="finished",
-                                       backend_output=json.dumps(backend_output, indent=4),
+                                       backend_output=backend_output,  # Pass dictionary directly, not JSON string
                                        conversation=session_data["conversation"])
 
     elif process_name == "data_acquisition":
         user_input = request.form.get("user_input", "")
+
+        # Add user input to conversation
+        session_data["conversation"].append({"type": "user", "message": user_input})
 
         # Call acquisition backend (sample JSON)
         try:
@@ -197,14 +193,18 @@ def submit(process_name):
         except:
             backend_output = {"status": "error", "message": "Backend error"}
 
+        # Add bot response to conversation
+        session_data["conversation"].append({"type": "bot", "message": "Processing completed! Check results below."})
+
         return render_template("chatbot.html",
                                process_name=process_name,
                                stage="finished",
-                               backend_output=json.dumps(backend_output, indent=4),
+                               backend_output=backend_output,  # Pass dictionary directly, not JSON string
+                               conversation=session_data.get("conversation", []),
                                sample_data=backend_output.get("sample_data"))
 
     else:
         return "Unknown process", 400
-
+    
 if __name__ == "__main__":
     app.run(debug=True)

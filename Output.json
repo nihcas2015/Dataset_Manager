@@ -1,0 +1,36 @@
+{
+  "status": "success",
+  "message": "Dataset preprocessing completed successfully",
+  "Processed_dataset_path": "Processed_Dataset.csv",
+  "original_dataset_path": "E:\\GothamDataset2025\\iotsim-combined-cycle-4.csv",
+  "target_column": "label",
+  "final_shape": [
+    254,
+    23
+  ],
+  "final_columns": [
+    "frame.time",
+    "frame.len",
+    "frame.protocols",
+    "eth.src",
+    "eth.dst",
+    "ip.dst",
+    "ip.src",
+    "ip.flags",
+    "ip.ttl",
+    "ip.proto",
+    "ip.checksum",
+    "ip.tos",
+    "tcp.srcport",
+    "tcp.dstport",
+    "tcp.flags",
+    "tcp.window_size_value",
+    "tcp.window_size_scalefactor",
+    "tcp.checksum",
+    "tcp.options",
+    "tcp.pdu.size",
+    "udp.srcport",
+    "udp.dstport",
+    "label_Benign"
+  ]
+}

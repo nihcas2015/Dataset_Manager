@@ -115,7 +115,7 @@ def submit(process_name):
                         cwd=main_project_dir,
                         capture_output=True,
                         text=True,
-                        timeout=300  # 5 minute timeout
+                        timeout=600  # 5 minute timeout
                     )
                     
                     # Check if Output.json was created
@@ -126,21 +126,25 @@ def submit(process_name):
                         with open(output_json_path, 'r') as f:
                             output_data = json.load(f)
                         
-                        # Create simplified backend output based on status
+                        # Extract values from output JSON
                         status = output_data.get("status", "unknown")
                         processed_dataset_path = output_data.get("Processed_dataset_path", "")
-                        
+                        final_shape = output_data.get("final_shape", [])
+                        shape_str = f"{tuple(final_shape)}" if final_shape else "Unknown"
+
                         if status == "success":
                             backend_output = {
                                 "status": "success",
-                                "message": "Dataset preprocessing completed successfully!",
-                                "processed_dataset_path": processed_dataset_path
+                                "message": f"✅ Preprocessing completed!\n📁 Saved at: {processed_dataset_path}\n📐 Final shape: {shape_str}",
+                                "processed_dataset_path": processed_dataset_path,
+                                "final_shape": shape_str
                             }
                         elif status == "completed_with_errors":
                             backend_output = {
                                 "status": "warning",
-                                "message": f"Completed with errors: {', '.join(output_data.get('errors', []))}"[:200],
-                                "processed_dataset_path": processed_dataset_path
+                                "message": f"⚠️ Completed with errors: {', '.join(output_data.get('errors', []))}"[:200],
+                                "processed_dataset_path": processed_dataset_path,
+                                "final_shape": shape_str
                             }
                         else:
                             backend_output = {
@@ -151,7 +155,7 @@ def submit(process_name):
                         # No Output.json found
                         backend_output = {
                             "status": "error",
-                            "message": f"Preprocessing failed - No Output.json file created. Error: {result.stderr[:200] if result.stderr else 'Unknown error'}"
+                            "message": f"❌ Preprocessing failed — no Output.json created.\nError: {result.stderr[:200] if result.stderr else 'Unknown error'}"
                         }
                         
                 except subprocess.TimeoutExpired:
@@ -165,7 +169,7 @@ def submit(process_name):
                         "message": f"Error running preprocessor: {str(e)}"
                     }
 
-                session_data["conversation"].append({"type": "bot", "message": "Processing completed! Check results below."})
+                session_data["conversation"].append({"type": "bot", "message": backend_output.get("message", "Processing complete.")})
                 
                 return render_template("chatbot.html",
                                        process_name=process_name,

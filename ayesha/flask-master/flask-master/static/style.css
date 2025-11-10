@@ -470,6 +470,217 @@ h1 {
     100% { transform: rotate(360deg); }
 }
 
+/* -------------------- Data Acquisition Buttons -------------------- */
+.input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.input-group input[type="text"] {
+    flex: 1;
+}
+
+.create-btn {
+    background: #4CAF50 !important;
+}
+
+.create-btn:hover {
+    background: #45a049 !important;
+}
+
+.search-btn {
+    background: #2196F3 !important;
+}
+
+.search-btn:hover {
+    background: #0b7dda !important;
+}
+
+.submit-btn {
+    white-space: nowrap;
+}
+
+/* -------------------- Dataset Search Results -------------------- */
+.search-results {
+    margin-top: 20px;
+}
+
+.dataset-result {
+    background: #f8f9fa;
+    border-left: 4px solid #2196F3;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 5px;
+}
+
+.dataset-result h5 {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+}
+
+.dataset-result h5 a {
+    color: #2196F3;
+    text-decoration: none;
+}
+
+.dataset-result h5 a:hover {
+    text-decoration: underline;
+}
+
+.dataset-result p {
+    margin: 5px 0;
+    color: #555;
+}
+
+.dataset-desc {
+    color: #666;
+    font-style: italic;
+    line-height: 1.5;
+}
+
+.ml-score-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.ml-score-badge.high {
+    background: #4CAF50;
+    color: white;
+}
+
+.ml-score-badge.medium {
+    background: #FFC107;
+    color: #333;
+}
+
+.ml-score-badge.low {
+    background: #f44336;
+    color: white;
+}
+
+.download-link {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: #4CAF50;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.download-link:hover {
+    background: #45a049;
+}
+
+/* -------------------- Data Acquisition Tools -------------------- */
+.tool-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin: 40px 0;
+}
+
+.tool-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tool-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border-color: #4CAF50;
+}
+
+.tool-card h2 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.8em;
+}
+
+.tool-card p {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    min-height: 60px;
+}
+
+.btn-primary {
+    display: inline-block;
+    padding: 12px 30px;
+    background: #4CAF50;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.btn-primary:hover {
+    background: #45a049;
+}
+
+.btn-back {
+    display: inline-block;
+    padding: 10px 20px;
+    color: #666;
+    text-decoration: none;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.btn-back:hover {
+    border-color: #999;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 0.9em;
+}
 
 
 

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Chatbot - {{ process_name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35,9 +36,14 @@
                     </div>
                 {% else %}
                     <div class="bot">
-                        <strong>🤖 Assistant:</strong> Hello! I'll help you acquire a dataset.<br>
-                        Please describe the type of dataset you need.
-                        <div class="hint">Example: "Customer data with age, gender, and purchase history"</div>
+                        <strong>🤖 Assistant:</strong> Hello! I'll help you acquire a dataset.<br><br>
+                        <strong>🤖 Create Dataset:</strong> Generate a synthetic dataset using AI<br>
+                        <div class="hint">Format: "domain | rows" or "domain | columns | rows"<br>
+                        Example: "E-commerce sales | 100" or "Healthcare records | name,age,diagnosis | 200"</div>
+                        <br>
+                        <strong>🔍 Search Dataset:</strong> Find existing datasets from repositories<br>
+                        <div class="hint">Format: Just describe what you're looking for<br>
+                        Example: "housing prices dataset" or "sentiment analysis twitter data"</div>
                     </div>
                 {% endif %}
             {% endif %}
@@ -51,7 +57,45 @@
                     {% if backend_output.status == "success" %}
                         <div class="success-message">
                             <h3>{{ backend_output.message }}</h3>
-                            <p><strong>📁 Processed Dataset Path:</strong> <code>{{ backend_output.dataset_path }}</code></p>
+                            
+                            <!-- Dataset Generator Results -->
+                            {% if backend_output.file_path %}
+                                <p><strong>📁 Generated Dataset:</strong> <code>{{ backend_output.file_path }}</code></p>
+                                <p><strong>📊 Rows:</strong> {{ backend_output.rows }}</p>
+                                <p><strong>🎯 Domain:</strong> {{ backend_output.domain }}</p>
+                                <a href="file:///{{ backend_output.file_path }}" class="download-link" download>📥 Open File Location</a>
+                            {% endif %}
+                            
+                            <!-- Dataset Searcher Results -->
+                            {% if backend_output.datasets %}
+                                <div class="search-results">
+                                    <h4>🔍 Top {{ backend_output.datasets|length }} Datasets Found:</h4>
+                                    {% for dataset in backend_output.datasets %}
+                                        <div class="dataset-result">
+                                            <h5><a href="{{ dataset.url }}" target="_blank">{{ dataset.title }}</a></h5>
+                                            <p><strong>Source:</strong> {{ dataset.source }}</p>
+                                            {% if dataset.ml_score %}
+                                                <p><strong>ML Score:</strong> 
+                                                    <span class="ml-score-badge 
+                                                        {% if dataset.ml_score >= 7 %}high
+                                                        {% elif dataset.ml_score >= 5 %}medium
+                                                        {% else %}low{% endif %}">
+                                                        {{ dataset.ml_score }}/10
+                                                    </span>
+                                                </p>
+                                            {% endif %}
+                                            {% if dataset.description %}
+                                                <p class="dataset-desc">{{ dataset.description[:200] }}...</p>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Preprocessing Results -->
+                            {% if backend_output.dataset_path %}
+                                <p><strong>📁 Processed Dataset Path:</strong> <code>{{ backend_output.dataset_path }}</code></p>
+                            {% endif %}
                         </div>
                     {% elif backend_output.status == "warning" %}
                         <div class="warning-message">
@@ -63,6 +107,12 @@
                     {% else %}
                         <div class="error-message">
                             <h3>{{ backend_output.message }}</h3>
+                            {% if backend_output.output %}
+                                <details style="margin-top: 10px;">
+                                    <summary style="cursor: pointer;">Show error details</summary>
+                                    <pre style="background: #f4f4f4; padding: 10px; overflow-x: auto; max-height: 300px;">{{ backend_output.output }}</pre>
+                                </details>
+                            {% endif %}
                         </div>
                     {% endif %}
                 </div>
@@ -111,9 +161,11 @@
                         </div>
                     {% else %}
                         <div class="input-group">
-                            <input type="text" name="user_input" placeholder="Describe your dataset requirements..." required>
+                            <input type="text" name="user_input" id="datasetInput" placeholder="Describe your dataset requirements (e.g., 'E-commerce sales | 100' or 'customer churn dataset')" required>
                             <input type="hidden" name="stage" value="start">
-                            <button type="submit" class="submit-btn">📤 Send Request</button>
+                            <input type="hidden" name="action" id="actionInput" value="">
+                            <button type="button" class="submit-btn create-btn" onclick="submitWithAction('create')">🤖 Create</button>
+                            <button type="button" class="submit-btn search-btn" onclick="submitWithAction('search')">🔍 Search</button>
                         </div>
                     {% endif %}
                 {% elif stage == "target_column" %}
@@ -143,6 +195,27 @@
 document.addEventListener('DOMContentLoaded', function() {
     initializeChatForm();
 });
+
+function submitWithAction(action) {
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('datasetInput');
+    const actionInput = document.getElementById('actionInput');
+    const spinner = document.getElementById('spinner');
+    
+    if (!input.value.trim()) {
+        alert('Please enter your dataset requirements');
+        return;
+    }
+    
+    actionInput.value = action;
+    
+    // Show spinner
+    if (spinner) {
+        spinner.style.display = 'flex';
+    }
+    
+    form.submit();
+}
 
 function initializeChatForm() {
     const form = document.getElementById('chat-form');
@@ -183,8 +256,6 @@ function initializeChatForm() {
             if (step === 'no' || step === 'end' || step === 'done') {
                 showSpinner = true;
             }
-        } else if (process === 'data_acquisition' && stage === 'start') {
-            showSpinner = true;
         }
 
         if (showSpinner) {

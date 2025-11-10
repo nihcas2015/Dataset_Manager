@@ -1,10 +1,29 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 import json
 import subprocess
 import os
 import sys
 
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    try:
+        # For Python 3.7+
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # For older Python versions
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False  # Support Unicode in JSON responses
+
+# Ensure all responses use UTF-8 encoding
+@app.after_request
+def after_request(response):
+    response.headers['Content-Type'] = response.headers.get('Content-Type', 'text/html') + '; charset=utf-8'
+    return response
 
 session_data = {}
 
@@ -135,14 +154,14 @@ def submit(process_name):
                         if status == "success":
                             backend_output = {
                                 "status": "success",
-                                "message": f"✅ Preprocessing completed!\n📁 Saved at: {processed_dataset_path}\n📐 Final shape: {shape_str}",
+                                "message": f"[OK] Preprocessing completed!\n[FILE] Saved at: {processed_dataset_path}\n[DATA] Final shape: {shape_str}",
                                 "processed_dataset_path": processed_dataset_path,
                                 "final_shape": shape_str
                             }
                         elif status == "completed_with_errors":
                             backend_output = {
                                 "status": "warning",
-                                "message": f"⚠️ Completed with errors: {', '.join(output_data.get('errors', []))}"[:200],
+                                "message": f"[!] Completed with errors: {', '.join(output_data.get('errors', []))}"[:200],
                                 "processed_dataset_path": processed_dataset_path,
                                 "final_shape": shape_str
                             }
@@ -155,7 +174,7 @@ def submit(process_name):
                         # No Output.json found
                         backend_output = {
                             "status": "error",
-                            "message": f"❌ Preprocessing failed — no Output.json created.\nError: {result.stderr[:200] if result.stderr else 'Unknown error'}"
+                            "message": f"[X] Preprocessing failed - no Output.json created.\nError: {result.stderr[:200] if result.stderr else 'Unknown error'}"
                         }
                         
                 except subprocess.TimeoutExpired:
@@ -178,37 +197,149 @@ def submit(process_name):
                                        conversation=session_data["conversation"])
 
     elif process_name == "data_acquisition":
-        user_input = request.form.get("user_input", "")
+        action = request.form.get("action", "")  # "create" or "search"
+        user_input = request.form.get("user_input", "").strip()
 
         # Add user input to conversation
         session_data["conversation"].append({"type": "user", "message": user_input})
 
-        # Call acquisition backend (sample JSON)
-        try:
-            backend_input = {"request": user_input}
-            result = subprocess.run(
-                ["python", "dummy_backend_acquisition.py"],
-                input=json.dumps(backend_input),
-                text=True,
-                capture_output=True,
-                check=True
-            )
-            backend_output = json.loads(result.stdout)
-        except:
-            backend_output = {"status": "error", "message": "Backend error"}
-
-        # Add bot response to conversation
-        session_data["conversation"].append({"type": "bot", "message": "Processing completed! Check results below."})
+        main_project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        
+        if action == "create":
+            # Call simulator_main.py to generate dataset
+            try:
+                simulator_path = os.path.join(main_project_dir, "simulator_main.py")
+                
+                # Parse input: domain, columns (optional), rows
+                # Expected format: "domain | columns | rows" or "domain | rows"
+                parts = [p.strip() for p in user_input.split("|")]
+                
+                if len(parts) == 2:
+                    domain, total_rows = parts[0], parts[1]
+                    columns = ""
+                elif len(parts) == 3:
+                    domain, columns, total_rows = parts[0], parts[1], parts[2]
+                else:
+                    domain = user_input
+                    columns = ""
+                    total_rows = "100"
+                
+                # Prepare input for simulator
+                simulator_input = f"{domain}\nno\n{columns}\n{total_rows}\n"
+                
+                session_data["conversation"].append({"type": "bot", "message": f"Generating dataset for domain: {domain}... Please wait..."})
+                
+                result = subprocess.run(
+                    [sys.executable, simulator_path],
+                    input=simulator_input,
+                    cwd=main_project_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                
+                output = result.stdout + result.stderr
+                
+                # Parse output to find generated file
+                import re
+                file_match = re.search(r"saved as '([^']+)'", output)
+                
+                if file_match:
+                    csv_file = file_match.group(1)
+                    row_match = re.search(r"with (\d+) rows", output)
+                    rows_generated = row_match.group(1) if row_match else "Unknown"
+                    
+                    backend_output = {
+                        "status": "success",
+                        "message": f"Dataset generated successfully with {rows_generated} rows!",
+                        "file_path": csv_file,
+                        "domain": domain,
+                        "rows": rows_generated,
+                        "output": output
+                    }
+                    session_data["conversation"].append({"type": "bot", "message": f"[OK] Dataset generated successfully! File saved at: {csv_file}"})
+                else:
+                    backend_output = {"status": "error", "message": "Generation failed", "output": output}
+                    session_data["conversation"].append({"type": "bot", "message": "[X] Dataset generation failed. Check output for details."})
+                    
+            except subprocess.TimeoutExpired:
+                backend_output = {"status": "error", "message": "Generation timeout (exceeded 5 minutes)"}
+                session_data["conversation"].append({"type": "bot", "message": "[X] Generation timeout. Please try again."})
+            except Exception as e:
+                backend_output = {"status": "error", "message": f"Error: {str(e)}"}
+                session_data["conversation"].append({"type": "bot", "message": f"[X] Error: {str(e)}"})
+        
+        elif action == "search":
+            # Call searcher_main.py to find datasets
+            try:
+                searcher_path = os.path.join(main_project_dir, "searcher_main.py")
+                
+                # Prepare input for searcher
+                searcher_input = f"{user_input}\n\n"
+                
+                session_data["conversation"].append({"type": "bot", "message": f"Searching for datasets matching: '{user_input}'... This may take several minutes..."})
+                
+                result = subprocess.run(
+                    [sys.executable, searcher_path],
+                    input=searcher_input,
+                    cwd=main_project_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=600
+                )
+                
+                output = result.stdout + result.stderr
+                
+                # Look for saved results JSON file
+                results_folder = os.path.join(main_project_dir, "results")
+                if os.path.exists(results_folder):
+                    json_files = [f for f in os.listdir(results_folder) if f.startswith("ml_datasets_") and f.endswith(".json")]
+                    if json_files:
+                        latest_file = max([os.path.join(results_folder, f) for f in json_files], key=os.path.getmtime)
+                        
+                        with open(latest_file, 'r') as f:
+                            search_results = json.load(f)
+                        
+                        datasets = search_results.get("datasets", [])[:5]
+                        
+                        backend_output = {
+                            "status": "success",
+                            "message": f"Found {search_results.get('total_found', 0)} datasets. Showing top 5.",
+                            "query": user_input,
+                            "total_found": search_results.get("total_found", 0),
+                            "datasets": datasets,
+                            "output": output
+                        }
+                        session_data["conversation"].append({"type": "bot", "message": f"[OK] Found {len(datasets)} relevant datasets! Check results below."})
+                    else:
+                        backend_output = {"status": "error", "message": "No results found", "output": output}
+                        session_data["conversation"].append({"type": "bot", "message": "[X] No datasets found."})
+                else:
+                    backend_output = {"status": "error", "message": "Results folder not found", "output": output}
+                    session_data["conversation"].append({"type": "bot", "message": "[X] Results folder not found."})
+                    
+            except subprocess.TimeoutExpired:
+                backend_output = {"status": "error", "message": "Search timeout (exceeded 10 minutes)"}
+                session_data["conversation"].append({"type": "bot", "message": "[X] Search timeout. Please try again."})
+            except Exception as e:
+                backend_output = {"status": "error", "message": f"Error: {str(e)}"}
+                session_data["conversation"].append({"type": "bot", "message": f"[X] Error: {str(e)}"})
+        
+        else:
+            backend_output = {"status": "error", "message": "Invalid action"}
+            session_data["conversation"].append({"type": "bot", "message": "[X] Please use Create or Search button."})
 
         return render_template("chatbot.html",
                                process_name=process_name,
                                stage="finished",
-                               backend_output=backend_output,  # Pass dictionary directly, not JSON string
-                               conversation=session_data.get("conversation", []),
-                               sample_data=backend_output.get("sample_data"))
+                               backend_output=backend_output,
+                               conversation=session_data.get("conversation", []))
 
     else:
         return "Unknown process", 400
-    
+
 if __name__ == "__main__":
+    # Ensure UTF-8 output on Windows
+    if sys.platform == 'win32':
+        os.system('chcp 65001 >nul')  # Set console to UTF-8
     app.run(debug=True)

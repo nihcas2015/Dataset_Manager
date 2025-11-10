@@ -69,6 +69,16 @@ class DatasetFinder:
     def log(self, message: str, level: str = "INFO"):
         """Log messages with timestamp"""
         timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Replace emojis with ASCII equivalents for Windows console compatibility
+        message = message.replace('🤖', '[AI]')
+        message = message.replace('🌐', '[WEB]')
+        message = message.replace('📊', '[DATA]')
+        message = message.replace('✅', '[OK]')
+        message = message.replace('❌', '[X]')
+        message = message.replace('⚠️', '[!]')
+        message = message.replace('🔍', '[SEARCH]')
+        
         activity = {
             'time': timestamp,
             'level': level,
@@ -87,12 +97,16 @@ class DatasetFinder:
         reset = '\033[0m'
         color = colors.get(level, '')
         
-        print(f"{color}[{timestamp}] [{level}] {message}{reset}")
+        try:
+            print(f"{color}[{timestamp}] [{level}] {message}{reset}")
+        except UnicodeEncodeError:
+            # Fallback without color if encoding fails
+            print(f"[{timestamp}] [{level}] {message}")
     
     def open_search_page(self, url: str, repo_name: str):
         """Open repository search page in browser"""
         try:
-            self.log(f"🌐 Opening {repo_name} in browser...", "STATUS")
+            self.log(f" Opening {repo_name} in browser...", "STATUS")
             webbrowser.open(url)
             time.sleep(2)  # Give time for browser to open
         except Exception as e:
@@ -114,7 +128,7 @@ class DatasetFinder:
     
     def generate_ml_focused_queries(self, user_query: str) -> List[str]:
         """Generate ML-focused search queries"""
-        self.log("🤖 Generating ML-focused search queries...", "STATUS")
+        self.log(" Generating ML-focused search queries...", "STATUS")
         
         prompt = f"""Given the query: "{user_query}"
 
@@ -129,7 +143,7 @@ Return ONLY a JSON array: ["query1", "query2", "query3"]"""
             json_match = re.search(r'\[.*\]', response, re.DOTALL)
             if json_match:
                 queries = json.loads(json_match.group())
-                self.log(f"✓ Generated {len(queries)} search queries", "SUCCESS")
+                self.log(f" Generated {len(queries)} search queries", "SUCCESS")
                 for i, q in enumerate(queries, 1):
                     self.log(f"  Query {i}: {q}", "INFO")
                 return queries
@@ -242,9 +256,9 @@ Return empty array [] if none found."""
         search_url = repo['search_url'] + quote(search_query)
         
         self.log(f"\n{'='*70}", "INFO")
-        self.log(f"🔍 Searching: {repo['name']}", "STATUS")
-        self.log(f"📝 Query: {search_query}", "INFO")
-        self.log(f"🔗 URL: {search_url}", "INFO")
+        self.log(f"Searching: {repo['name']}", "STATUS")
+        self.log(f"Query: {search_query}", "INFO")
+        self.log(f"URL: {search_url}", "INFO")
         self.log(f"{'='*70}", "INFO")
         
         # Open in browser
@@ -256,28 +270,28 @@ Return empty array [] if none found."""
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
             
-            self.log(f"⏳ Fetching search results from {repo['name']}...", "INFO")
+            self.log(f"Fetching search results from {repo['name']}...", "INFO")
             response = requests.get(search_url, headers=headers, timeout=15)
             
             if response.status_code == 200:
-                self.log(f"✓ Successfully accessed {repo['name']}", "SUCCESS")
+                self.log(f"Successfully accessed {repo['name']}", "SUCCESS")
                 
                 # Extract datasets using LLM
-                self.log(f"🤖 Analyzing page content with LLM...", "INFO")
+                self.log(f" Analyzing page content with LLM...", "INFO")
                 datasets = self.extract_csv_datasets(response.text, query)
                 
                 if datasets:
-                    self.log(f"✓ Found {len(datasets)} CSV datasets from {repo['name']}", "SUCCESS")
+                    self.log(f" Found {len(datasets)} CSV datasets from {repo['name']}", "SUCCESS")
                     for i, ds in enumerate(datasets[:3], 1):
                         self.log(f"   {i}. {ds.get('title', 'Unknown')}", "INFO")
                 else:
-                    self.log(f"⚠ No CSV datasets found in {repo['name']}", "WARNING")
+                    self.log(f" No CSV datasets found in {repo['name']}", "WARNING")
                 
                 return datasets
             else:
-                self.log(f"✗ Failed to access {repo['name']}: Status {response.status_code}", "ERROR")
+                self.log(f" Failed to access {repo['name']}: Status {response.status_code}", "ERROR")
         except Exception as e:
-            self.log(f"✗ Error searching {repo['name']}: {str(e)}", "ERROR")
+            self.log(f" Error searching {repo['name']}: {str(e)}", "ERROR")
         
         return []
     
@@ -319,7 +333,7 @@ Return empty array [] if none found."""
     def download_csv_dataset(self, url: str, filename: str) -> Optional[Dict]:
         """Download and validate CSV dataset"""
         try:
-            self.log(f"⬇️  Downloading: {url}", "INFO")
+            self.log(f" Downloading: {url}", "INFO")
             
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -339,7 +353,7 @@ Return empty array [] if none found."""
                 
                 if validation.get('valid'):
                     file_size = os.path.getsize(filepath)
-                    self.log(f"✓ Downloaded valid CSV: {filename}", "SUCCESS")
+                    self.log(f" Downloaded valid CSV: {filename}", "SUCCESS")
                     self.log(f"   Size: {file_size} bytes", "INFO")
                     self.log(f"   Rows: {validation.get('rows')}, Features: {validation.get('features')}", "INFO")
                     return {
@@ -348,11 +362,11 @@ Return empty array [] if none found."""
                     }
                 else:
                     os.remove(filepath)
-                    self.log(f"✗ Invalid CSV removed: {validation.get('reason')}", "WARNING")
+                    self.log(f" Invalid CSV removed: {validation.get('reason')}", "WARNING")
             else:
-                self.log(f"✗ Download failed: Status {response.status_code}", "WARNING")
+                self.log(f" Download failed: Status {response.status_code}", "WARNING")
         except Exception as e:
-            self.log(f"✗ Download error: {str(e)}", "ERROR")
+            self.log(f" Download error: {str(e)}", "ERROR")
         
         return None
     
@@ -370,7 +384,7 @@ Return empty array [] if none found."""
                 'datasets': datasets
             }, f, indent=2)
         
-        self.log(f"💾 Saved dataset list: {json_file}", "SUCCESS")
+        self.log(f"Saved dataset list: {json_file}", "SUCCESS")
         
         # Save as CSV
         csv_file = os.path.join(self.results_folder, f"ml_datasets_{timestamp}.csv")
@@ -391,12 +405,12 @@ Return empty array [] if none found."""
                     ds.get('description', 'N/A')[:100]
                 ])
         
-        self.log(f"💾 Saved CSV list: {csv_file}", "SUCCESS")
+        self.log(f"Saved CSV list: {csv_file}", "SUCCESS")
         return json_file, csv_file
     
     def find_datasets(self, user_query: str):
         """Main function to find ML-suitable CSV datasets"""
-        self.log("\n" + "🚀 " + "="*66, "STATUS")
+        self.log("\n" + " " + "="*66, "STATUS")
         self.log("   STARTING ML DATASET SEARCH", "STATUS")
         self.log("   Browser windows will open for each search", "STATUS")
         self.log("="*70 + "\n", "STATUS")
@@ -404,7 +418,7 @@ Return empty array [] if none found."""
         # Generate queries
         search_queries = self.generate_ml_focused_queries(user_query)
         
-        self.log("\n📋 Beginning repository searches...", "STATUS")
+        self.log("\n Beginning repository searches...", "STATUS")
         self.log("   (Browser tabs will open - you can review the actual search pages)\n", "INFO")
         
         input("Press ENTER to start searching repositories...")
@@ -434,11 +448,11 @@ Return empty array [] if none found."""
         self.log(f"\n📊 Found {len(unique_datasets)} unique CSV datasets across all repositories", "SUCCESS")
         
         if not unique_datasets:
-            self.log("❌ No CSV datasets found. Try different search terms.", "ERROR")
+            self.log(" No CSV datasets found. Try different search terms.", "ERROR")
             return
         
         # Analyze ML suitability
-        self.log("\n🤖 Analyzing ML suitability of datasets...", "STATUS")
+        self.log("\n Analyzing ML suitability of datasets...", "STATUS")
         ml_suitable_datasets = []
         
         for i, ds in enumerate(unique_datasets, 1):
@@ -448,19 +462,19 @@ Return empty array [] if none found."""
             
             if analysis.get('ml_suitable') and analysis.get('ml_score', 0) >= 5:
                 ml_suitable_datasets.append(ds)
-                self.log(f"   ✓ ML Score: {analysis.get('ml_score')}/10 - {ds.get('title', 'Unknown')}", "SUCCESS")
+                self.log(f"    ML Score: {analysis.get('ml_score')}/10 - {ds.get('title', 'Unknown')}", "SUCCESS")
         
         # Sort by ML score
         ml_suitable_datasets.sort(key=lambda x: x.get('ml_analysis', {}).get('ml_score', 0), reverse=True)
         
-        self.log(f"\n✓ Found {len(ml_suitable_datasets)} ML-suitable datasets", "SUCCESS")
+        self.log(f"\n Found {len(ml_suitable_datasets)} ML-suitable datasets", "SUCCESS")
         self.found_datasets = ml_suitable_datasets
         
         # Save list
         json_file, csv_file = self.save_dataset_list(ml_suitable_datasets, user_query)
         
         # Attempt downloads
-        self.log("\n⬇️  Attempting to download top datasets...", "STATUS")
+        self.log("\n  Attempting to download top datasets...", "STATUS")
         download_count = 0
         
         for i, dataset in enumerate(ml_suitable_datasets[:5]):
@@ -468,7 +482,7 @@ Return empty array [] if none found."""
             if not url:
                 continue
             
-            self.log(f"\n📦 Dataset {i+1}/5:", "INFO")
+            self.log(f"\n Dataset {i+1}/5:", "INFO")
             self.log(f"   Title: {dataset.get('title', 'Unknown')}", "INFO")
             self.log(f"   ML Score: {dataset.get('ml_analysis', {}).get('ml_score')}/10", "INFO")
             
@@ -484,42 +498,57 @@ Return empty array [] if none found."""
         
         # Final summary
         self.log("\n" + "="*70, "SUCCESS")
-        self.log("✅ SEARCH COMPLETE!", "SUCCESS")
+        self.log(" SEARCH COMPLETE!", "SUCCESS")
         self.log("="*70, "SUCCESS")
-        self.log(f"📊 Total datasets found: {len(ml_suitable_datasets)}", "SUCCESS")
-        self.log(f"⬇️  Successfully downloaded: {download_count}", "SUCCESS")
-        self.log(f"💾 Results saved to: {csv_file}", "SUCCESS")
+        self.log(f" Total datasets found: {len(ml_suitable_datasets)}", "SUCCESS")
+        self.log(f" Successfully downloaded: {download_count}", "SUCCESS")
+        self.log(f" Results saved to: {csv_file}", "SUCCESS")
         if download_count > 0:
-            self.log(f"📁 CSV files saved in: {self.datasets_folder}/", "SUCCESS")
+            self.log(f" CSV files saved in: {self.datasets_folder}/", "SUCCESS")
         self.log("="*70 + "\n", "SUCCESS")
 
 
 def main():
     """Main entry point"""
-    print("\n" + "="*70)
-    print("  🤖 ML DATASET FINDER - CSV Only")
-    print("  🌐 Browser Integration - See What's Being Searched")
-    print("="*70 + "\n")
-    
-    user_query = input("Enter your ML dataset search query: ").strip()
-    
-    if not user_query:
-        print("Error: Query cannot be empty")
-        return
-    
-    print("\n⚠️  IMPORTANT: Browser tabs will open for each repository search.")
-    print("   You'll be able to see exactly what the agent is searching.\n")
-    
-    finder = DatasetFinder(model='llama3.2')
+    # Set UTF-8 encoding for console output
+    import sys
+    if sys.platform == 'win32':
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+        except:
+            pass
     
     try:
-        finder.find_datasets(user_query)
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Search interrupted by user")
-    except Exception as e:
-        print(f"\n❌ Fatal error: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print("\n" + "="*70)
+        print("  [AI] ML DATASET FINDER - CSV Only")
+        print("  [WEB] Browser Integration - See What's Being Searched")
+        print("="*70 + "\n")
+        
+        user_query = input("Enter your ML dataset search query: ").strip()
+        
+        if not user_query:
+            print("Error: Query cannot be empty")
+            return
+        
+        print("\n[!] IMPORTANT: Browser tabs will open for each repository search.")
+        print("    You'll be able to see exactly what the agent is searching.\n")
+        
+        finder = DatasetFinder(model='llama3.2')
+        
+        try:
+            finder.find_datasets(user_query)
+        except KeyboardInterrupt:
+            print("\n\n[!] Search interrupted by user")
+        except Exception as e:
+            print(f"\n[X] Fatal error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    except UnicodeEncodeError:
+        # Fallback for encoding errors
+        print("\n" + "="*70)
+        print("  ML DATASET FINDER - CSV Only")
+        print("  Browser Integration - See What's Being Searched")
+        print("="*70 + "\n")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 {
-    "path": "E:\\GothamDataset2025\\iotsim-combined-cycle-4.csv",
+    "path": "E:\\GothamDataset2025\\iotsim-building-monitor-1.csv",
     "target": "label",
-    "prompt_1": "remove duplicate rows",
-    "prompt_2": "encode all features"
+    "prompt_1": "normalize it",
+    "prompt_2": "remove null values by replacing them with mean"
 }

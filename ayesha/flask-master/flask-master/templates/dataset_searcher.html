@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataset Searcher</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+        
+        .loading-spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #2196F3;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results-summary {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .dataset-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .dataset-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .dataset-title {
+            color: #2196F3;
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+        
+        .dataset-title a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        
+        .dataset-title a:hover {
+            text-decoration: underline;
+        }
+        
+        .dataset-info {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px;
+            margin: 15px 0;
+            font-size: 0.95em;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .info-value {
+            color: #333;
+        }
+        
+        .ml-score {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .ml-score.high {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .ml-score.medium {
+            background: #FFC107;
+            color: #333;
+        }
+        
+        .ml-score.low {
+            background: #f44336;
+            color: white;
+        }
+        
+        .dataset-description {
+            color: #666;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔍 Dataset Searcher</h1>
+    </header>
+    
+    <div class="container">
+        {% if error %}
+        <div class="error-message">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="POST" id="searcherForm">
+            <div class="form-group">
+                <label for="search_query">Search Query: <span style="color: red;">*</span></label>
+                <input type="text" id="search_query" name="search_query" 
+                       placeholder="e.g., housing prices, sentiment analysis, customer churn" 
+                       required>
+                <small>Describe what kind of dataset you're looking for</small>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Search Datasets</button>
+            <a href="{{ url_for('data_acquisition_home') }}" class="btn-back">Cancel</a>
+        </form>
+        
+        {% if result %}
+            {% if result.status == "success" %}
+            <div class="results-summary">
+                <h3>📊 Search Results for: "{{ result.query }}"</h3>
+                <p>Found <strong>{{ result.total_found }}</strong> dataset(s). Showing top {{ result.datasets|length }} most relevant results.</p>
+            </div>
+            
+            {% for dataset in result.datasets %}
+            <div class="dataset-card">
+                <h3 class="dataset-title">
+                    <a href="{{ dataset.url }}" target="_blank">{{ dataset.title }}</a>
+                </h3>
+                
+                <div class="dataset-info">
+                    <div class="info-label">Source:</div>
+                    <div class="info-value">{{ dataset.source }}</div>
+                    
+                    <div class="info-label">ML Score:</div>
+                    <div class="info-value">
+                        {% if dataset.ml_score >= 7 %}
+                            <span class="ml-score high">{{ dataset.ml_score }}/10 - Excellent</span>
+                        {% elif dataset.ml_score >= 5 %}
+                            <span class="ml-score medium">{{ dataset.ml_score }}/10 - Good</span>
+                        {% else %}
+                            <span class="ml-score low">{{ dataset.ml_score }}/10 - Fair</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if dataset.file_size %}
+                    <div class="info-label">File Size:</div>
+                    <div class="info-value">{{ dataset.file_size }}</div>
+                    {% endif %}
+                    
+                    {% if dataset.downloads %}
+                    <div class="info-label">Downloads:</div>
+                    <div class="info-value">{{ dataset.downloads }}</div>
+                    {% endif %}
+                </div>
+                
+                {% if dataset.description %}
+                <div class="dataset-description">
+                    {{ dataset.description }}
+                </div>
+                {% endif %}
+                
+                {% if dataset.ml_reasoning %}
+                <details style="margin-top: 10px;">
+                    <summary style="cursor: pointer; color: #666; font-size: 0.9em;">💡 Why this score?</summary>
+                    <p style="color: #555; margin-top: 10px; font-size: 0.9em;">{{ dataset.ml_reasoning }}</p>
+                </details>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
+            <details style="margin-top: 20px;">
+                <summary style="cursor: pointer; color: #666;">Show search output</summary>
+                <pre style="background: #f4f4f4; padding: 10px; overflow-x: auto; max-height: 300px;">{{ result.output }}</pre>
+            </details>
+            
+            {% else %}
+            <div class="error-message">
+                <strong>Search Failed:</strong> {{ result.message }}
+                {% if result.output %}
+                <details style="margin-top: 10px;">
+                    <summary style="cursor: pointer;">Show error details</summary>
+                    <pre style="background: #f4f4f4; padding: 10px; overflow-x: auto; max-height: 300px;">{{ result.output }}</pre>
+                </details>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>Searching Datasets...</h2>
+            <p>Analyzing repositories and evaluating ML suitability...</p>
+            <p style="font-size: 0.9em; color: #ccc;">This may take several minutes</p>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('searcherForm').addEventListener('submit', function() {
+            document.getElementById('loadingOverlay').classList.add('active');
+        });
+    </script>
+</body>
+</html>

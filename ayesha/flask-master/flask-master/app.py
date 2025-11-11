@@ -134,7 +134,7 @@ def submit(process_name):
                         cwd=main_project_dir,
                         capture_output=True,
                         text=True,
-                        timeout=600  # 5 minute timeout
+                        timeout=6600  # 5 minute timeout
                     )
                     
                     # Check if Output.json was created
@@ -235,7 +235,7 @@ def submit(process_name):
                     cwd=main_project_dir,
                     capture_output=True,
                     text=True,
-                    timeout=300
+                    timeout=6600
                 )
                 
                 output = result.stdout + result.stderr
@@ -285,7 +285,7 @@ def submit(process_name):
                     cwd=main_project_dir,
                     capture_output=True,
                     text=True,
-                    timeout=600
+                    timeout=6600
                 )
                 
                 output = result.stdout + result.stderr

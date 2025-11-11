@@ -71,19 +71,19 @@ class DatasetFinder:
         timestamp = datetime.now().strftime("%H:%M:%S")
         
         # Replace emojis with ASCII equivalents for Windows console compatibility
-        message = message.replace('🤖', '[AI]')
-        message = message.replace('🌐', '[WEB]')
-        message = message.replace('📊', '[DATA]')
-        message = message.replace('✅', '[OK]')
-        message = message.replace('❌', '[X]')
-        message = message.replace('⚠️', '[!]')
-        message = message.replace('🔍', '[SEARCH]')
+        message = message.replace('\U0001F916', '[AI]')  # robot emoji
+        message = message.replace('\U0001F310', '[WEB]')  # globe emoji
+        message = message.replace('\U0001F4CA', '[DATA]')  # bar chart emoji
+        message = message.replace('\u2705', '[OK]')  # check mark emoji
+        message = message.replace('\u274C', '[X]')  # cross mark emoji
+        message = message.replace('\u26A0\uFE0F', '[!]')  # warning sign emoji
+        message = message.replace('\U0001F50D', '[SEARCH]')  # magnifying glass emoji
         
         activity = {
             'time': timestamp,
             'level': level,
             'message': message
-        }
+        }   
         self.activity_log.append(activity)
         
         # Color coding for terminal
@@ -433,7 +433,7 @@ Return empty array [] if none found."""
                 
                 # Pause between searches
                 if datasets or True:  # Always pause
-                    self.log(f"⏸️  Pausing 3 seconds before next search...\n", "INFO")
+                    self.log(f"[PAUSE] Pausing 3 seconds before next search...\n", "INFO")
                     time.sleep(3)
         
         # Remove duplicates
@@ -445,7 +445,7 @@ Return empty array [] if none found."""
                 seen_urls.add(url)
                 unique_datasets.append(ds)
         
-        self.log(f"\n📊 Found {len(unique_datasets)} unique CSV datasets across all repositories", "SUCCESS")
+        self.log(f"\n Found {len(unique_datasets)} unique CSV datasets across all repositories", "SUCCESS")
         
         if not unique_datasets:
             self.log(" No CSV datasets found. Try different search terms.", "ERROR")
